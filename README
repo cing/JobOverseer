@@ -1,0 +1,17 @@
+JobOverseer
+===========
+Requires Python 2.6 and Paramiko/SSH library (http://pypi.python.org/pypi/paramiko).
+
+Behold the wonder that is JobOverseer. It is an all powerful software to remotely execute forbidden commands on all-powerful sentient HPC clusters across the vast realm of internsts. In non-D&D terms, it's just a script that uses your SSH credentials to login to one or more computers and execute commands. It is primarily geared towards HPC users who use multiple computing resources. To be honest, it's just a wrapper around an SSH library, and that library is Paramiko. 
+
+Features
+--------
+-Parsing the qstat/showq output and saving it locally in a database
+
+Planned Features
+----------------
+-Tracking of disk usage for multiple users
+-Remote submission of jobs to best available resources in a list of clusters.
+-Automatic creation of cluster specific submit scripts
+-Logging
+-Persistent process mode
