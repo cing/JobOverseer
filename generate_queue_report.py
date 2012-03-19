@@ -60,8 +60,9 @@ for prev_day in range(previous_days):
     #We'll be parsing the list of all jobs each time, kind of wasteful when the DB is huge
     #but what the heck... 
     for row in query_results:
-        #Check to see if the row was sampled less than a week ago
         job_datetime = datetime.datetime.strptime(row[1], "%Y-%m-%d %X.%f")
+
+        #Check to see if the job was sampled during the time window we're looping over
         if previous_time_frame < (nowtime - job_datetime) < previous_time_frame_plus_1:
             cluster_name = str(row[0])
             if not cluster_cores.has_key(cluster_name):
@@ -69,7 +70,7 @@ for prev_day in range(previous_days):
                 cluster_datapoints[cluster_name] = 1.
                 cluster_lastread[cluster_name] = job_datetime
 
-            #Here's the hard-coded value of only the jobs that are running, not queued.
+            #Make sure to only parse the running jobs, not the queued ones!
             if row[5] == "R":
                 cluster_cores[cluster_name] += int(row[3])*int(row[4])
 
