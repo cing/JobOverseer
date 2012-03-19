@@ -7,7 +7,7 @@ for each cluster in the database
 """
 
 import sqlite3
-import datetime
+from datetime import datetime, time, date, timedelta
 from sys import argv
 
 #This is the path to some queue_data SQL
@@ -20,7 +20,7 @@ previous_days = int(argv[2])
 #Since we don't know apriori how many times we've collected qstat data
 #in a given 24 hour period, we have to assume that different qstat outputs
 #are separated by at least X number of minutes.
-run_threshold = datetime.timedelta(minutes=5)
+run_threshold = timedelta(minutes=5)
 
 conn = sqlite3.connect(filename)
 c = conn.cursor()
@@ -33,7 +33,7 @@ c.execute('select * from jobs')
 query_results = c.fetchall()
 
 #Everything is calculated relative to the current day, but that could change in the future
-nowtime = datetime.datetime.now()
+nowtime = datetime.combine(date.today(), time())
 
 #This is a list for each day of the week of the past X days
 #inside it will be a dictionary of ClusterName and "average cores used" pairs
@@ -42,11 +42,11 @@ cores_per_day = []
 
 #We're going to loop over the number of days in the past (-1 days, -2 days, etc.)
 for prev_day in range(previous_days):
-    previous_time_frame_plus_1 = datetime.timedelta(days=prev_day+1)
-    previous_time_frame = datetime.timedelta(days=prev_day)
+    previous_time_frame_plus_1 = timedelta(days=prev_day+1)
+    previous_time_frame = timedelta(days=prev_day)
     
     #You can reassure yourself by printing out the timeframes we're checking
-    #print previous_time_frame_plus_1, previous_time_frame
+    #print nowtime-previous_time_frame_plus_1, nowtime-previous_time_frame
 
     #this is a temporary dictionary for each day that holds the total cores used
     cluster_cores={}
@@ -60,7 +60,7 @@ for prev_day in range(previous_days):
     #We'll be parsing the list of all jobs each time, kind of wasteful when the DB is huge
     #but what the heck... 
     for row in query_results:
-        job_datetime = datetime.datetime.strptime(row[1], "%Y-%m-%d %X.%f")
+        job_datetime = datetime.strptime(row[1], "%Y-%m-%d %X.%f")
 
         #Check to see if the job was sampled during the time window we're looping over
         if previous_time_frame < (nowtime - job_datetime) < previous_time_frame_plus_1:
@@ -85,6 +85,13 @@ for prev_day in range(previous_days):
         cluster_cores[cluster_name] /= cluster_datapoints[cluster_name]
 
     cores_per_day.append(cluster_cores)
-        
-print cores_per_day
+
+#output the average cores used on each cluster for a give timeperiod
+for prev_day in range(previous_days):
+    previous_time_frame_plus_1 = timedelta(days=prev_day+1)
+    previous_time_frame = timedelta(days=prev_day)
+    
+    print nowtime-previous_time_frame_plus_1, "to", nowtime-previous_time_frame, cores_per_day[prev_day]
+
+#print cores_per_day
 c.close()
