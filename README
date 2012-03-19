@@ -2,11 +2,12 @@ JobOverseer
 ===========
 Requires Python 2.6 and Paramiko/SSH library (http://pypi.python.org/pypi/paramiko).
 
-Behold the wonder that is JobOverseer. It is an all powerful software to remotely execute forbidden commands on all-powerful sentient HPC clusters across the vast realm of internsts. In non-D&D terms, it's just a script that uses your SSH credentials to login to one or more computers and execute commands. It is primarily geared towards HPC users who use multiple computing resources. To be honest, it's just a wrapper around an SSH library, and that library is Paramiko. 
+Behold the wonder that is JobOverseer. It is an all powerful software to remotely execute forbidden commands on all-powerful sentient HPC clusters across the vast realm of internets. In non-D&D terms, it's just a script that uses your SSH credentials to login to one or more computers and execute commands. It is primarily geared towards HPC users who use multiple computing resources. To be honest, it's just a wrapper around an SSH library with some bells and whistles!
 
 Features
 --------
 -Parsing the qstat/showq output and saving it locally in a database
+-CPU usage reports from qstat data
 
 Planned Features
 ----------------
@@ -15,3 +16,48 @@ Planned Features
 -Automatic creation of cluster specific submit scripts
 -Logging
 -Persistent process mode
+
+Example Script for Saving Cluster Data
+--------------------------------------
+#Run this script several times per day for a week
+#Remember that you need to have authorized ssh keys uploaded
+#to every cluster so the script can easily connect and run commands
+
+#Look at average statistics with: python generate_queue_report.py queue_data 7
+
+from clusters import *
+
+UserList = []
+UserList.append(User("Bob Loblaw", ["blobl","loblowb","boblowb12"]))
+UserList.append(User("Chris Ing", ["coolc","cooling","ingcool"]))
+
+ClusterList = []
+ClusterStats = []
+
+ClusterList.append(Cluster("SciNet", 8, "coolc", UserList, "login.scinet.utoronto.ca"))
+ClusterList[0].setQueueCommand("showq --xml") 
+
+ClusterList.append(Cluster("Colosse", 8, "cooling", UserList, "colosse.clumeq.ca"))
+ClusterList[1].setQueueCommand("qstat -xml -g d -u '*'")
+
+ClusterList.append(Cluster("Orca", 24, "coolc", UserList, "orca.sharcnet.ca"))
+ClusterList[2].setQueueCommand("/opt/sharcnet/torque/current/bin/qstat -x")
+
+ClusterList.append(Cluster("Nestor", 8, "coolc", UserList, "nestor.westgrid.ca"))
+ClusterList[3].setQueueCommand("/opt/bin/qstat -x -l nestor")
+
+ClusterList.append(Cluster("Lattice", 8, "coolc", UserList, "lattice.westgrid.ca"))
+ClusterList[4].setQueueCommand("/usr/local/torque/bin/qstat -xt")
+
+ClusterList.append(Cluster("MP2", 24, "ingcool", UserList, "secret-mp2.ccs.usherbrooke.ca", True))
+ClusterList[5].setQueueCommand("/opt/torque/bin/qstat -x")
+
+ClusterList.append(Cluster("Guillimin", 12, "coolc", UserList, "guillimin.clumeq.ca"))
+ClusterList[6].setQueueCommand("showq --xml")
+
+for cluster in ClusterList:
+    print "Querying ", cluster.name
+    cluster.refreshQueueData()
+    print "Writing ", cluster.name
+    cluster.writeQueueData()
+
