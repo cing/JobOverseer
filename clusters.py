@@ -15,13 +15,14 @@ class Cluster():
     commands, parse the output, and save the data in a local database.
     """
 
-    def __init__(self, name, cores, user, userlist, host):
+    def __init__(self, name, cores, user, userlist, host, virtual_processors_flag=False):
         self.name = name
         self.cores = cores
         self.user = user
         self.userlist = userlist
         self.host = host
         self.queue_data = None
+        self.vp_flag = virtual_processors_flag
 
     def executeCommand(self, command):
         """
@@ -142,7 +143,14 @@ class Cluster():
                     temp_job={}
                     temp_job["Job_Owner"]=valid_user
                     temp_job["Nodes"]=job.find("Resource_List").find("nodes").text.split(":ppn=")[0]
-                    temp_job["Cores"]=job.find("Resource_List").find("nodes").text.split(":ppn=")[1]
+
+                    #ppn in qstat output may not represent the physical cores, but rather a 
+                    #designated compute slot. This flag will override the cores output
+                    #and use the server.cores value instead.
+                    if self.vp_flag:
+                        temp_job["Cores"]=self.cores
+                    else:
+                        temp_job["Cores"]=job.find("Resource_List").find("nodes").text.split(":ppn=")[1]
 
                     if job.find("job_state").text == "R":
                         temp_job["State"]="R"
@@ -163,10 +171,21 @@ class Cluster():
                     temp_job["Job_Owner"]=valid_user
                     if job.find("Resource_List").find("nodes") is not None:
                         temp_job["Nodes"]=int(job.find("Resource_List").find("nodes").text.split(":ppn=")[0])
-                        temp_job["Cores"]=int(job.find("Resource_List").find("nodes").text.split(":ppn=")[1])
+
+                        #If the number of cores returned by ppn is just a number of compute slots
+                        #then override the output and use self.cores
+                        if self.vp_flag:
+                            temp_job["Cores"]=self.cores
+                        else:
+                            temp_job["Cores"]=int(job.find("Resource_List").find("nodes").text.split(":ppn=")[1])
                     else:
                         temp_job["Nodes"]=1
-                        temp_job["Cores"]=int(job.find("Resource_List").find("procs").text)
+
+                        #Same thing here!
+                        if self.vp_flag:
+                            temp_job["Cores"]=self.cores
+                        else:
+                            temp_job["Cores"]=int(job.find("Resource_List").find("procs").text)
 
                     if job.find("job_state").text == "R":
                         temp_job["State"]="R"
@@ -283,6 +302,7 @@ if __name__ == '__main__':
     # For each cluster in your cluster list, run the queue command which we added above
     # and optionally write that information to a SQLite database
     for cluster in ClusterList:
+        print cluster.name
         cluster.refreshQueueData()
         print cluster.queue_data
         #cluster.writeQueueData()
