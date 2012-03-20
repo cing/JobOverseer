@@ -221,7 +221,8 @@ class Cluster():
                             temp_job["State"]="R"
                         else:
                             temp_job["State"]="W"
-                            jobs.append(temp_job)
+
+                        jobs.append(temp_job)
 
         else:
             print "ERROR: I don't know how to parse that joblist command yet!"
