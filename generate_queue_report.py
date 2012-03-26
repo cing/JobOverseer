@@ -32,6 +32,8 @@ c.execute('select * from jobs')
 
 query_results = c.fetchall()
 
+c.close()
+
 #Everything is calculated relative to the current day, but that could change in the future
 nowtime = datetime.combine(date.today(), time())
 
@@ -86,12 +88,42 @@ for prev_day in range(previous_days):
 
     cores_per_day.append(cluster_cores)
 
-#output the average cores used on each cluster for a give timeperiod
+print "--------------"
+print "Daily Usage:"
+print "--------------"
+
+#output the average cores used on each cluster for every day for the given time period
 for prev_day in range(previous_days):
     previous_time_frame_plus_1 = timedelta(days=prev_day+1)
     previous_time_frame = timedelta(days=prev_day)
     
     print nowtime-previous_time_frame_plus_1, "to", nowtime-previous_time_frame, cores_per_day[prev_day]
 
-#print cores_per_day
-c.close()
+
+#now we'd like to display the average usage across the time period
+#first we need to fix the days that do not have any usage and are not keys
+if previous_days > 1:
+    #loop over all pairs of days
+    for day1 in cores_per_day:
+        for day2 in cores_per_day[1:]:
+            #if any of the cluster names doesn't match
+            if set(day1.keys()) != set(day2.keys()):
+                for cluster in day1.keys():
+                    if not cluster in day2:
+                        day2[cluster]=0.
+                for cluster in day2.keys():
+                    if not cluster in day1:
+                        day1[cluster]=0.
+
+            if not set(day1.keys()) == set(day2.keys()): raise AssertionError
+
+print "--------------"
+print "Average Usage:"
+print "--------------"
+
+#jedi python line to sum up across all days
+avg_cores_per_day = reduce(lambda x, y: dict((k, v + y[k]) for k, v in x.iteritems()), cores_per_day)
+#divide by number of days
+for cluster_name, cores in avg_cores_per_day.iteritems():
+    avg_cores_per_day[cluster_name] /= previous_days
+    print(cluster_name + " %.2f" % round(avg_cores_per_day[cluster_name],2))
