@@ -142,15 +142,31 @@ class Cluster():
                 if (valid_user is not None) and (job.find("job_state").text != "C"):
                     temp_job={}
                     temp_job["Job_Owner"]=valid_user
-                    temp_job["Nodes"]=job.find("Resource_List").find("nodes").text.split(":ppn=")[0]
+                    
+                    #in Torque 2.5 or greater, procs can be used instead of cores
+                    job_procs = job.find("Resource_List").find("procs")
+                    if job_procs is not None:
+                        if float(job_procs.text) < self.cores:
+                            temp_job["Nodes"]=1
+                            temp_job["Cores"]=float(job_procs.text)
+                        else:
+                            #this isn't entirely true, unless you explicitly include "nodes"
+                            #your X number of processors could be on a large number of nodes
+                            #TODO: Include correct node summation
+                            temp_job["Nodes"]=float(job_procs.text)/self.cores
+                            temp_job["Cores"]=self.cores
 
-                    #ppn in qstat output may not represent the physical cores, but rather a 
-                    #designated compute slot. This flag will override the cores output
-                    #and use the server.cores value instead.
-                    if self.vp_flag:
-                        temp_job["Cores"]=self.cores
                     else:
-                        temp_job["Cores"]=job.find("Resource_List").find("nodes").text.split(":ppn=")[1]
+                        #check to see if the cores value has been set
+                        temp_job["Nodes"]=job.find("Resource_List").find("nodes").text.split(":ppn=")[0]
+
+                        #ppn in qstat output may not represent the physical cores, but rather a 
+                        #designated compute slot. This flag will override the cores output
+                        #and use the server.cores value instead.
+                        if self.vp_flag:
+                            temp_job["Cores"]=self.cores
+                        else:
+                            temp_job["Cores"]=job.find("Resource_List").find("nodes").text.split(":ppn=")[1]
 
                     if job.find("job_state").text == "R":
                         temp_job["State"]="R"
