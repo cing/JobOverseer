@@ -27,7 +27,7 @@ nowtime = datetime.combine(date.today(), time())
 #Since we don't know apriori how many times we've collected qstat data
 #in a given 24 hour period, we have to assume that different qstat outputs
 #are separated by at least X number of minutes.
-run_threshold = timedelta(minutes=5)
+run_threshold = timedelta(minutes=3)
 
 #cluster use stores the number of cores used for each user on a particular day
 cluster_use = []
@@ -38,26 +38,30 @@ for prev_day in range(previous_days):
         previous_time_frame = timedelta(days=prev_day)
 
         users_per_day = {}
-        cluster_last_read = 0.
+        cluster_lastread = 0.
         cluster_datapoints = 0.
 
         for row in query_results:
             job_datetime = datetime.strptime(row[1], "%Y-%m-%d %X.%f")
+            run_state = row[5]
 
             #Check to see if the job was sampled during the time window we're looping over
-            if previous_time_frame < (nowtime - job_datetime) < previous_time_frame_plus_1:
+            if (previous_time_frame < (nowtime - job_datetime) < previous_time_frame_plus_1) and (run_state == "R"):
                 #We record the user for that job and add it to the users_per_day dictionary
                 user_name = str(row[2])
-                if not users_per_day.has_key(user_name):
-                    users_per_day[user_name] = int(row[3])*int(row[4])
+                if cluster_lastread == 0:
                     cluster_lastread = job_datetime
                     cluster_datapoints = 1
+
+                if not users_per_day.has_key(user_name):
+                    users_per_day[user_name] = int(row[3])*int(row[4])
                 else:
                     users_per_day[user_name] += int(row[3])*int(row[4])
 
                 #Only if we have a job sampled more than run_threshold minutes from now 
                 #do we have a new datapoint
                 if (job_datetime - cluster_lastread) > run_threshold:
+                    print "Found more than one data points for :", job_datetime
                     cluster_datapoints += 1
                     cluster_lastread = job_datetime
 
